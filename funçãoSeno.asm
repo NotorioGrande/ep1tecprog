@@ -4,19 +4,18 @@
 	oneNegFloat:		.float -1.0
 	zeroFloat:		.float 0.0
 	senLimit:		.float 0.0001
-	valorTeste:		.float 1.0
+	valorTeste:		.float 0.5
 	
 .text
 main:
 	
+
 	lwc1 $f14, valorTeste
 	jal sen
 	
 	li $v0, 2
 	mov.s $f12, $f0
 	syscall
-	
-	
 	
 	#Finaliza o Main
 	li $v0, 10
@@ -157,3 +156,21 @@ tiraSinal: #função de módulo que recebe x = $f12 // retorna em $f0
 	jr $ra
 	
 #Fim da função tiraSinal ------------------------------------
+
+#Inicio da funcao cos
+cos:
+# funcao recebe o sen de um numero em $f12 e retorna em $f0
+# identidade trigonemetrica: Cos = sqrt(1 - Sen²)
+	subi $sp, $sp, 4
+	sw $ra, 0($sp)  # salva o return adress para chamar pow
+	li $a0, 2 #coloca 2 em a0 para chamar a funcao pow
+	mov.s $f0, $f12 # coloca o sen em $f0 para chamar a função pow
+	jal pow # fez sen² e colou em $f0
+	lwc1 $f4, oneFloat
+	sub.s $f6, $f4, $f0 #Coloca em $f6 1 - Sen²
+	sqrt.s $f0, $f6 # Coloca em $f0 sqrt(1 - Sen²)]
+	lw $ra, 0($sp)  #guarda o valor que tava na stack
+	addi $sp, $sp, 4  #deixa a stack arrumadinha pro proximo
+	jr $ra  # volta para a funcao
+	# fim da funcao
+	
