@@ -1,10 +1,11 @@
 .data
+	
 	oneFloat:		.float 1.0
 	oneNegFloat:		.float -1.0
 	zeroFloat:		.float 0.0
 	senLimit:		.float 0.0001
 	valorTeste:		.float 1.0
-	teste:			.
+	
 .text
 main:
 	
@@ -63,7 +64,7 @@ sen: #  // $s0=k	$f24=x // retorna o resultado em $f0=sen(x)
 	mtc1 $t3, $f4
 	cvt.s.w $f4, $f4 #$f22 = (2.k + 1)!
 	
-	#divisão final [(-1)^k . x^(2.k + 1)]/ (2.k + 1)!
+	#divisÃ£o final [(-1)^k . x^(2.k + 1)]/ (2.k + 1)!
 	div.s $f28, $f14, $f4
 	
 	
@@ -87,7 +88,7 @@ sen: #  // $s0=k	$f24=x // retorna o resultado em $f0=sen(x)
 	add.s $f0, $f20, $f30
 	jr $ra
 	
-#Fim da função seno ---------------------------------------	
+#Fim da funÃ§Ã£o seno ---------------------------------------	
 	
 	
 	
@@ -95,12 +96,12 @@ sen: #  // $s0=k	$f24=x // retorna o resultado em $f0=sen(x)
 	
 pow: # funcao que eleva um numero float a um numero inteiro,(n**k) o argumento do float deve ser passado em $f12 e do int em $a0
 #$f6 para salvar o resultado ao longo da exec
-#f8 será usado para guardar 0, f0 é o retorno
+#f8 serÃ¡ usado para guardar 0, f0 Ã© o retorno
 
 mtc1 $zero, $f8  # coloca zero no $f8 para usar para calcul,os
 beq $a0, $0, powzero #se for 0 retornar 1
 move $t3, $a0  # coloca K em t3
-addi $t3, $t3, -1 # subtrai 1 pq o número de vezes que a multiplicação deve ser feita é K-1
+addi $t3, $t3, -1 # subtrai 1 pq o nÃºmero de vezes que a multiplicaÃ§Ã£o deve ser feita Ã© K-1
 li $t2, 0 #coloca 0 em t2 para servir de variavel para a variavel de controle
 add.s $f6, $f12, $f8  #coloca $f12 em $f6
 #inicio do for
@@ -121,10 +122,10 @@ add.s $f0, $f18, $f8 # colocar 1 no retorno
 jr $ra # retorno
 
 
-#Fim da função pow -------------------------------------
+#Fim da funÃ§Ã£o pow -------------------------------------
 
 
-fatorial: #$t3 é o valor que se deseja em fatorial, a função retorna o resultado em $v0
+fatorial: #$t3 Ã© o valor que se deseja em fatorial, a funÃ§Ã£o retorna o resultado em $v0
 	blt $t3, $zero, fatorialFim
 	addi $v0, $zero, 1
 	
@@ -137,20 +138,22 @@ fatorial: #$t3 é o valor que se deseja em fatorial, a função retorna o resultado
 	fatorialFim:	
 	jr $ra	
 
-#Fim da função fatorial ----------------------------------
+#Fim da funÃ§Ã£o fatorial ----------------------------------
 
 
-tiraSinal: #função de módulo que recebe x = $f0 // retorna em $f0
+tiraSinal: #funÃ§Ã£o de mÃ³dulo que recebe x = $f12 // retorna em $f0
 	
 	lwc1 $f20, zeroFloat #$f20 = 0.0
 	lwc1 $f8, oneNegFloat #$f8 = -1.0
 	
-	c.lt.s $f0, $f20
-	bc1f tiraSinalFim #se $f0 < 0.0 for falso, então voltar o programa
+	c.lt.s $f12, $f20
+	bc1f tiraSinalFim #se $f12 < 0.0 for falso, entÃ£o voltar o programa
 	
-	mul.s $f0, $f0, $f8 #$f0 = -$f0
+	mul.s $f12, $f12, $f8 #$f0 = -$f0
+	
+	mov.s $f0, $f12
 	
 	tiraSinalFim:
 	jr $ra
 	
-#Fim da função tiraSinal ------------------------------------
+#Fim da funÃ§Ã£o tiraSinal ------------------------------------
