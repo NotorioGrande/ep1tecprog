@@ -4,7 +4,7 @@
 	oneNegFloat:		.float -1.0
 	zeroFloat:		.float 0.0
 	senLimit:		.float 0.0001
-	valorFloat:		.float 1.5
+	valorFloat:		.float 6
 	valorTeste:		.word 4
 
 
@@ -35,12 +35,13 @@ sen: 	# entrada: angulo em rad: $f14
 	subi $sp, $sp, 4
 	sw $ra, 0($sp)  # salva o return adress para chamar pow
 	
-	mov.s $f18, $f14 # o angulo é salvo em $f18
+	mov.s $f18, $f14 # o angulo ï¿½ salvo em $f18
 	addi $s0, $zero, 0 #k($s0) = 0
 	l.s  $f20, zeroFloat #$f20 = 0.0
 	l.s  $f22, oneNegFloat #$f22 = -1.0
 	l.s  $f24, oneFloat #$f24 = 1.0
 	l.s $f26, senLimit #$f26 = 0.0001 = 10^(-4)
+	l.s $f28, zeroFloat #f28 = 0
 	
 	senLoop:	
 	
@@ -63,7 +64,7 @@ sen: 	# entrada: angulo em rad: $f14
 	# 2.k + 1        int
 	mul $t4, $s0, 2 #$t4 = 2.k
 	addi $t4, $t4, 1 #$t4 = 2.k + 1
-	add $s1, $zero, $t4 #faz cópia de $t4 em $s1
+	add $s1, $zero, $t4 #faz cï¿½pia de $t4 em $s1
 	
 	# x^(2.k + 1)
 	add $a0, $zero, $t4 
@@ -89,13 +90,13 @@ sen: 	# entrada: angulo em rad: $f14
 	jal fatorialDiv
 	mov.s $f30, $f0 #$f30 = (-1)^k . x^(2.k + 1)
 	
-	#soma $f28 em $f30
+	#soma $f28 + $f30 e coloca em $f28
 	add.s $f28, $f28, $f30
 	
 	addi $s0, $s0, 1 #k++
-	abs.s $f28, $f28 # |$f28|
-	c.le.s $f30, $f26 # ? $f28 <= $f26
-	bc1t senExit # se $f28 <= $26 --> true, vai pra senExit
+	abs.s $f30, $f30 # |$f30|
+	c.le.s $f30, $f26 # ? $f30 <= $f26
+	bc1t senExit # se $f30 <= $26 --> true, vai pra senExit
 	j senLoop
 	
 	senExit:
@@ -137,9 +138,9 @@ jr $ra # retorno
 
 #Fim da funÃ§Ã£o pow -------------------------------------
 
-fatorialDiv: 	# função que divide um float por um fatorial
+fatorialDiv: 	# funï¿½ï¿½o que divide um float por um fatorial
 		# entrada:	$a0 = fatorial	$f14 = numerador da div
-		# saida:	$f0 = resultado da divisão
+		# saida:	$f0 = resultado da divisï¿½o
 		
 	subi $sp, $sp, 4
 	sw $ra, 0($sp)  # salva o return adress para chamar pow
