@@ -4,18 +4,25 @@
 	oneNegFloat:		.float -1.0
 	zeroFloat:		.float 0.0
 	senLimit:		.float 0.0001
-	valorFloat:		.float 6
+	valorFloat:		.float 3
 	valorTeste:		.word 4
-
+	mat: 			.space 16 # numero de bytes
 
 .text 
 main:
 	
+	la $a0, mat
 	l.s $f14, valorFloat
-	lw $a0, valorTeste
-	jal sen
+	jal criaMatriz
 	
-	mov.s $f12, $f0
+	la $s1, mat
+	li $t1, 0 # i eh o indice da linha que queremos acessar
+	sll $t1, $t1, 1 # i * nCols(2)
+	addi $t1, $t1, 1 # j eh o indice da coluna que queremos acessar
+	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um float (4)
+	add $t1, $t1, $s1 # posicao da celula = offset + posicao da matriz
+	
+	l.s $f12, ($t1)
 	li $v0, 2
 	syscall
 	
@@ -25,17 +32,98 @@ main:
 	
 	li $v0, 10
 	syscall
-#FIM MAIN
+#FIM MAIN ----------------------------------
 
 
+#Inicio da funcao criaMatriz
+criaMatriz:	# entrada: angulo em rad: $f14
+	
+	subi $sp, $sp, 4
+	sw $ra, 0($sp)  # salva o return address para chamar	
+	
+	l.s $f20, zeroFloat #$f20 = 0.0
+	l.s  $f22, oneNegFloat #$f22 = -1.0
+	
+	jal sen
+	add.s $f28, $f0, $f20 #$f28 = sen
+	
+	mov.s $f12, $f0
+	jal cos
+	mov.s $f30, $f0 #$f30 = cos
+	
+	# matriz[0][0] = cos
+	
+	add.s $f0, $f20, $f30
+	
+	la $s1, mat
+	li $t1, 0 # i eh o indice da linha que queremos acessar
+	sll $t1, $t1, 1 # i * nCols(2)
+	addi $t1, $t1, 0 # j eh o indice da coluna que queremos acessar
+	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um int (4)
+	add $t1, $t1, $s1 # posicao da celula = offset + posicao da matriz
+	
+	swc1 $f0, 0($t1)
+	
+	
+	# matriz[1][1] = cos
+	
+	add.s $f0, $f20, $f30
+	
+	la $s1, mat
+	li $t1, 1 # i eh o indice da linha que queremos acessar
+	sll $t1, $t1, 1 # i * nCols(2)
+	addi $t1, $t1, 1 # j eh o indice da coluna que queremos acessar
+	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um int (4)
+	add $t1, $t1, $s1 # posicao da celula = offset + posicao da matriz
+	
+	swc1 $f0, ($t1)
+	
+	
+	# matriz[0][1] = -sen
+
+	mul.s $f0, $f28, $f22 #$f0 = -sen
+	
+	la $s1, mat
+	li $t1, 0 # i eh o indice da linha que queremos acessar
+	sll $t1, $t1, 1 # i * nCols(2)
+	addi $t1, $t1, 1 # j eh o indice da coluna que queremos acessar
+	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um int (4)
+	add $t1, $t1, $s1 # posicao da celula = offset + posicao da matriz
+	
+	swc1 $f0, ($t1)
+	
+	
+	# matriz[1][0] = sen
+	
+	add.s $f0, $f20, $f28
+	
+	la $s1, mat
+	li $t1, 1 # i eh o indice da linha que queremos acessar
+	sll $t1, $t1, 1 # i * nCols(2)
+	addi $t1, $t1, 0 # j eh o indice da coluna que queremos acessar
+	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um int (4)
+	add $t1, $t1, $s1 # posicao da celula = offset + posicao da matriz
+	
+	swc1 $f0, ($t1)
+	
+	
+	
+	lw $ra, 0($sp)  #guarda o valor que tava na stack
+	addi $sp, $sp, 4  #deixa a stack arrumadinha pro proximo
+	
+	jr $ra
+#Fim da funcao criaMatriz
+
+
+#Inicio da funcao sen
 sen: 	# entrada: angulo em rad: $f14
   	# $s0=k	$f24=x
   	# retorna o resultado em $f0=sen(x)
 	
 	subi $sp, $sp, 4
-	sw $ra, 0($sp)  # salva o return adress para chamar pow
+	sw $ra, 0($sp)  # salva o return address para chamar pow
 	
-	mov.s $f18, $f14 # o angulo � salvo em $f18
+	mov.s $f18, $f14 # o angulo eh salvo em $f18
 	addi $s0, $zero, 0 #k($s0) = 0
 	l.s  $f20, zeroFloat #$f20 = 0.0
 	l.s  $f22, oneNegFloat #$f22 = -1.0
@@ -66,7 +154,7 @@ sen: 	# entrada: angulo em rad: $f14
 	addi $t4, $t4, 1 #$t4 = 2.k + 1
 	add $s1, $zero, $t4 #faz c�pia de $t4 em $s1
 	
-	# x^(2.k + 1)
+	# x^(2.k + 1)		float
 	add $a0, $zero, $t4 
 	add.s $f12, $f20, $f18 
 	
@@ -96,7 +184,7 @@ sen: 	# entrada: angulo em rad: $f14
 	addi $s0, $s0, 1 #k++
 	abs.s $f30, $f30 # |$f30|
 	c.le.s $f30, $f26 # ? $f30 <= $f26
-	bc1t senExit # se $f30 <= $26 --> true, vai pra senExit
+	bc1t senExit # se $f30 <= $f26 --> true, vai pra senExit
 	j senLoop
 	
 	senExit:
@@ -106,16 +194,17 @@ sen: 	# entrada: angulo em rad: $f14
 	mov.s $f0, $f28
 	jr $ra
 	
-#Fim da função seno ---------------------------------------	
+#Fim da funcao seno ---------------------------------------	
 
+#Inicio da funcao pow
 pow: # funcao que eleva um numero float a um numero inteiro,(n**k) o argumento do float deve ser passado em $f12 e do int em $a0
 #$f6 para salvar o resultado ao longo da exec
-#f8 será usado para guardar 0, f0 é o retorno
+#f8 sera usado para guardar 0, f0 eh o retorno
 
 mtc1 $zero, $f8  # coloca zero no $f8 para usar para calculos
 beq $a0, $0, powzero #se for 0 retornar 1
 move $t3, $a0  # coloca K em t3
-addi $t3, $t3, -1 # subtrai 1 pq o número de vezes que a multiplicação deve ser feita é K-1
+addi $t3, $t3, -1 # subtrai 1 pq o numero de vezes que a multiplicacao deve ser feita eh K-1
 li $t2, 0 #coloca 0 em t2 para servir de variavel para a variavel de controle
 add.s $f6, $f12, $f8  #coloca $f12 em $f6
 #inicio do for
@@ -136,14 +225,15 @@ add.s $f0, $f18, $f8 # colocar 1 no retorno
 jr $ra # retorno
 
 
-#Fim da função pow -------------------------------------
+#Fim da funcao pow -------------------------------------
 
-fatorialDiv: 	# fun��o que divide um float por um fatorial
+#Inicio da funcao fatorialDiv
+fatorialDiv: 	# funcao que divide um float por um fatorial
 		# entrada:	$a0 = fatorial	$f14 = numerador da div
-		# saida:	$f0 = resultado da divis�o
+		# saida:	$f0 = resultado da divisao
 		
 	subi $sp, $sp, 4
-	sw $ra, 0($sp)  # salva o return adress para chamar pow
+	sw $ra, 0($sp)  # salva o return address para chamar pow
 			
 	move $t3, $a0 #move para $t3 o valor que se deseja fatorial
 	mov.s $f8, $f14 #move para $f8 o valor do numerador
@@ -177,9 +267,9 @@ cos:
 # funcao recebe o sen de um numero em $f12 e retorna em $f0
 # identidade trigonemetrica: Cos = sqrt(1 - Sen²)
 	subi $sp, $sp, 4
-	sw $ra, 0($sp)  # salva o return adress para chamar pow
+	sw $ra, 0($sp)  # salva o return address para chamar pow
 	li $a0, 2 #coloca 2 em a0 para chamar a funcao pow
-	mov.s $f0, $f12 # coloca o sen em $f0 para chamar a função pow
+	mov.s $f0, $f12 # coloca o sen em $f0 para chamar a funcao pow
 	jal pow # fez sen² e colou em $f0
 	lwc1 $f4, oneFloat
 	sub.s $f6, $f4, $f0 #Coloca em $f6 1 - Sen²
