@@ -4,45 +4,61 @@
 	oneNegFloat:		.float -1.0
 	zeroFloat:		.float 0.0
 	senLimit:		.float 0.0001
-	valorFloat:		.float 3.0
+	angulo:			.float 3.0
 	mat: 			.space 16 # numero de bytes
-	matFinal:		.space 8 #numero de bytes
+	vetor:		.space 8 #numero de bytes
 	twoQuad: 		.float 1.58 # valores  para fazer comparacao
 	fourQuad:		.float 4.74
+	quebra:			.asciiz "\n"
 	
-	valorX:			.float 3.0
-	valorY:			.float 2.0
+	valorX:			.float 7.0
+	valorY:			.float -3.0
 
 .text 
 main:
 	
-	la $t1, matFinal
+	#coloca os valores x e y no vetor a ser rotacionado
+	la $t1, vetor
 	l.s $f8, valorX
 	l.s $f10, valorY
 	
 	s.s $f8, ($t1)
 	s.s $f10, 4($t1)
 	
+	#coloca o angulo no argumento $f14 
+	l.s $f14, angulo
 	
-	l.s $f14, valorFloat
-	jal multiplicaMatriz
+	#chama a funcao rotaciona
+	jal rotaciona
 	
 	
-	la $t1, matFinal
+	#imprime vetor[0]
+	la $t1, vetor
+	l.s $f12, 0($t1)
+	li $v0, 2
+	syscall
+	
+	
+	#imprime quebra de linha
+	la $a0, quebra
+	li $v0, 4
+	syscall
+	
+	
+	#imprime vetor[1]
+	la $t1, vetor
 	l.s $f12, 4($t1)
 	li $v0, 2
 	syscall
 	
 	
-	
-	
-	
+	#finaliza a funcao main
 	li $v0, 10
 	syscall
 #FIM MAIN ----------------------------------
 
 #Inicio da funcao multiplicaMatriz
-multiplicaMatriz: # entrada: angulo em rad: $f14 | Vetor --> matFinal
+rotaciona: # entrada: angulo em rad: $f14 | Vetor --> vetor
 	
 	subi $sp, $sp, 4
 	sw $ra, 0($sp)  # salva o return address para chamar
@@ -89,7 +105,7 @@ multiplicaMatriz: # entrada: angulo em rad: $f14 | Vetor --> matFinal
 	l.s $f4, ($t1) #$f4 = Matriz[1][1] = cos
 	
 	
-	la $s1, matFinal	
+	la $s1, vetor	
 	l.s $f16, ($s1) #$f16 = Vetor[0] = x
 	l.s $f18, 4($s1) #$f18 = Vetor[1] = y
 	
@@ -98,7 +114,7 @@ multiplicaMatriz: # entrada: angulo em rad: $f14 | Vetor --> matFinal
 	mul.s $f28, $f18, $f6 # y.(-sen)	
 	add.s $f26, $f28, $f30 # x.cos + y.(-sen)
 	
-	la $s1, matFinal	
+	la $s1, vetor	
 	s.s $f26, ($s1)	#guarda [x.cos + y.(-sen)] em Vetor[0]
 	
 	
@@ -106,7 +122,7 @@ multiplicaMatriz: # entrada: angulo em rad: $f14 | Vetor --> matFinal
 	mul.s $f28, $f18, $f4 # y.cos
 	add.s $f26, $f28, $f30 # x.sen + y.cos
 	
-	la $s1, matFinal	
+	la $s1, vetor	
 	s.s $f26, 4($s1)	#guarda [x.sen + y.cos] em Vetor[1]	
 	
 	
@@ -124,26 +140,21 @@ criaMatriz:	# entrada: angulo em rad: $f14
 	l.s $f20, zeroFloat #$f20 = 0.0
 	l.s  $f22, oneNegFloat #$f22 = -1.0
 	
-	jal sen
-	add.s $f28, $f0, $f20 #$f28 = sen
-	
-	mov.s $f12, $f0
-	jal cos  # a funcao cos nao leva em conta o quadrante, entao o sinal precisa ser ajustado baseado no angulo
-	mov.s $f16, $f0 # $f16 = cos
-	
-	
 	subi $sp, $sp, 4
 	s.s $f14, 0($sp)  # salva o return address para chamar
 	
-	l.s $f24, oneFloat
-	mul.s $f12, $f14, $f24 # $f12 = angulo
-	jal sinalcos
+	jal sen
+	add.s $f28, $f0, $f20 #$f28 = sen
 	
 	l.s $f14, 0($sp)  #guarda o valor que tava na stack
 	addi $sp, $sp, 4  #deixa a stack arrumadinha pro proximo
 	
+	l.s $f20, zeroFloat #$f20 = 0.0
+	l.s  $f22, oneNegFloat #$f22 = -1.0
 	
-	mul.s $f0, $f0, $f16 # $f0 = cos * sinalcos(angulo)
+	add.s $f12, $f20, $f14
+	jal cos
+
 	mov.s $f30, $f0 #$f30 = cos
 	
 	# matriz[0][0] = cos
@@ -367,38 +378,44 @@ fatorialDiv: 	# funcao que divide um float por um fatorial
 
 #Inicio da funcao cos
 cos:
-# funcao recebe o sen de um numero em $f12 e retorna em $f0
+# funcao recebe o angulo de um numero em $f12 e retorna em $f0
 # identidade trigonemetrica: Cos = sqrt(1 - Sen²)
-	subi $sp, $sp, 4
-	sw $ra, 0($sp)  # salva o return address para chamar pow
-	li $a0, 2 #coloca 2 em a0 para chamar a funcao pow
-	jal pow # fez sen² e colocou em $f0
-	lwc1 $f4, oneFloat
-	sub.s $f6, $f4, $f0 #Coloca em $f6 1 - Sen²
-	sqrt.s $f8, $f6 # Coloca em $f0 sqrt(1 - Sen²)]
-	mov.s $f0, $f8
-	lw $ra, 0($sp)  #guarda o valor que tava na stack
-	addi $sp, $sp, 4  #deixa a stack arrumadinha pro proximo
-	jr $ra  # volta para a funcao
-	# fim da funcao
-
+    subi $sp, $sp, 8
+    sw $ra, 0($sp)  # salva o return address para chamar pow
+    jal sinalcos  # descobre o sinal que o cos desse quadrante tem
+    swc1 $f0, 4($sp)
+    mov.s $f14, $f12 
+    jal sen # chama o sen apos colocar o angulo no argumento
+    mov.s $f12, $f0 # coloca em $f12 o valor do sen para chamar o pow    
+    li $a0, 2 #coloca 2 em a0 para chamar a funcao pow
+    jal pow # fez sen² e colocou em $f0
+    lwc1 $f4, oneFloat
+    sub.s $f6, $f4, $f0 #Coloca em $f6 1 - Sen²
+    sqrt.s $f8, $f6 # Coloca em $f8 sqrt(1 - Sen²)]
+    lwc1 $f6, 4($sp) # coloca em $f6 o sinal do Cos que estava na stack
+    mul.s $f0, $f6, $f8 # atribui o sinal correto ao Cos
+    lw $ra, 0($sp)  #guarda o valor que tava na stack
+    addi $sp, $sp, 8  #deixa a stack arrumadinha pro proximo
+    jr $ra  # volta para a funcao
+    # fim da funcao
+    
 #SinalCos - recebe o angulo em radianos e devolve o sinal do cos
 sinalcos:  #recebe o angulo em rad em $f12
-	mov.s $f4, $f12 # coloca o angulo em $f4 
-	lwc1 $f6, twoQuad # coloca o valor que marca a entrada para o segundo quadrante
-	lwc1 $f10, fourQuad # coloca o valor que marca a entrada para o quadrante quadrante
-	c.lt.s $f10, $f4 # vai retornar falso na flag se o angulo for maior ou igual a marca do terceiro quadrante, ou seja, se o angulo esta no quarto
-	bc1t sinalcospos
-	c.le.s $f4, $f6 # checa se o angulo eh menor ou igual a marca que indica entrada para o segundo quadrante, ou seja, se o angulo esta no primeiro quad
-	bc1t sinalcospos
-	#agora, se o angulo nao esta no primeiro nem quarto quadrante, ele esta no segundo ou no terceiro, que possuem sinal negativo
-	j sinalcosneg
-
+    mov.s $f4, $f12 # coloca o angulo em $f4 
+    lwc1 $f6, twoQuad # coloca o valor que marca a entrada para o segundo quadrante
+    lwc1 $f10, fourQuad # coloca o valor que marca a entrada para o quadrante quadrante
+    c.lt.s $f10, $f4 # vai retornar falso na flag se o angulo for maior ou igual a marca do terceiro quadrante, ou seja, se o angulo esta no quarto
+    bc1t sinalcospos
+    c.le.s $f4, $f6 # checa se o angulo eh menor ou igual a marca que indica entrada para o segundo quadrante, ou seja, se o angulo esta no primeiro quad
+    bc1t sinalcospos
+    #agora, se o angulo nao esta no primeiro nem quarto quadrante, ele esta no segundo ou no terceiro, que possuem sinal negativo
+    j sinalcosneg
+    
 sinalcospos:  # caso em que o sinal do quadrante for positivo
-	lwc1 $f0, oneFloat
-	jr $ra
+    lwc1 $f0, oneFloat
+    jr $ra
 
 sinalcosneg:
-	lwc1 $f0, oneNegFloat
-	jr $ra
+    lwc1 $f0, oneNegFloat
+    jr $ra
 	
