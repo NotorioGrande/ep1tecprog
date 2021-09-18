@@ -4,25 +4,32 @@
 	oneNegFloat:		.float -1.0
 	zeroFloat:		.float 0.0
 	senLimit:		.float 0.0001
-	valorFloat:		.float 3
-	valorTeste:		.word 4
+	valorFloat:		.float 3.0
 	mat: 			.space 16 # numero de bytes
+	matFinal:		.space 8 #numero de bytes
+	twoQuad: 		.float 1.58 # valores  para fazer comparacao
+	fourQuad:		.float 4.74
+	
+	valorX:			.float 3.0
+	valorY:			.float 2.0
 
 .text 
 main:
 	
-	la $a0, mat
+	la $t1, matFinal
+	l.s $f8, valorX
+	l.s $f10, valorY
+	
+	s.s $f8, ($t1)
+	s.s $f10, 4($t1)
+	
+	
 	l.s $f14, valorFloat
-	jal criaMatriz
+	jal multiplicaMatriz
 	
-	la $s1, mat
-	li $t1, 0 # i eh o indice da linha que queremos acessar
-	sll $t1, $t1, 1 # i * nCols(2)
-	addi $t1, $t1, 1 # j eh o indice da coluna que queremos acessar
-	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um float (4)
-	add $t1, $t1, $s1 # posicao da celula = offset + posicao da matriz
 	
-	l.s $f12, ($t1)
+	la $t1, matFinal
+	l.s $f12, 4($t1)
 	li $v0, 2
 	syscall
 	
@@ -34,6 +41,79 @@ main:
 	syscall
 #FIM MAIN ----------------------------------
 
+#Inicio da funcao multiplicaMatriz
+multiplicaMatriz: # entrada: angulo em rad: $f14 | Vetor --> matFinal
+	
+	subi $sp, $sp, 4
+	sw $ra, 0($sp)  # salva o return address para chamar
+	
+	jal criaMatriz
+	
+	la $s1, mat
+	li $t1, 0 # i eh o indice da linha que queremos acessar
+	sll $t1, $t1, 1 # i * nCols(2)
+	addi $t1, $t1, 0 # j eh o indice da coluna que queremos acessar
+	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um int (4)
+	add $t1, $t1, $s1 # posicao da celula = offset + posicao da matriz
+	
+	l.s $f10, ($t1) #$f10 = Matriz[0][0] = cos
+	
+							
+	la $s1, mat
+	li $t1, 1 # i eh o indice da linha que queremos acessar
+	sll $t1, $t1, 1 # i * nCols(2)
+	addi $t1, $t1, 0 # j eh o indice da coluna que queremos acessar
+	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um int (4)
+	add $t1, $t1, $s1 # posicao da celula = offset + posicao da matriz
+	
+	l.s $f8, ($t1) #$f8 = Matriz[1][0] = sen
+	
+	
+	la $s1, mat
+	li $t1, 0 # i eh o indice da linha que queremos acessar
+	sll $t1, $t1, 1 # i * nCols(2)
+	addi $t1, $t1, 1 # j eh o indice da coluna que queremos acessar
+	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um int (4)
+	add $t1, $t1, $s1 # posicao da celula = offset + posicao da matriz
+	
+	l.s $f6, ($t1) #$f6 = Matriz[0][1] = -sen
+	
+	
+	la $s1, mat
+	li $t1, 1 # i eh o indice da linha que queremos acessar
+	sll $t1, $t1, 1 # i * nCols(2)
+	addi $t1, $t1, 1 # j eh o indice da coluna que queremos acessar
+	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um int (4)
+	add $t1, $t1, $s1 # posicao da celula = offset + posicao da matriz
+	
+	l.s $f4, ($t1) #$f4 = Matriz[1][1] = cos
+	
+	
+	la $s1, matFinal	
+	l.s $f16, ($s1) #$f16 = Vetor[0] = x
+	l.s $f18, 4($s1) #$f18 = Vetor[1] = y
+	
+	
+	mul.s $f30, $f16, $f10 # x.cos
+	mul.s $f28, $f18, $f6 # y.(-sen)	
+	add.s $f26, $f28, $f30 # x.cos + y.(-sen)
+	
+	la $s1, matFinal	
+	s.s $f26, ($s1)	#guarda [x.cos + y.(-sen)] em Vetor[0]
+	
+	
+	mul.s $f30, $f16, $f8 # x.sen
+	mul.s $f28, $f18, $f4 # y.cos
+	add.s $f26, $f28, $f30 # x.sen + y.cos
+	
+	la $s1, matFinal	
+	s.s $f26, 4($s1)	#guarda [x.sen + y.cos] em Vetor[1]	
+	
+	
+	lw $ra, 0($sp)  #guarda o valor que tava na stack
+	addi $sp, $sp, 4  #deixa a stack arrumadinha pro proximo
+	jr $ra
+#Fim da funcao multiplicaMatriz
 
 #Inicio da funcao criaMatriz
 criaMatriz:	# entrada: angulo em rad: $f14
@@ -48,11 +128,28 @@ criaMatriz:	# entrada: angulo em rad: $f14
 	add.s $f28, $f0, $f20 #$f28 = sen
 	
 	mov.s $f12, $f0
-	jal cos
+	jal cos  # a funcao cos nao leva em conta o quadrante, entao o sinal precisa ser ajustado baseado no angulo
+	mov.s $f16, $f0 # $f16 = cos
+	
+	
+	subi $sp, $sp, 4
+	s.s $f14, 0($sp)  # salva o return address para chamar
+	
+	l.s $f24, oneFloat
+	mul.s $f12, $f14, $f24 # $f12 = angulo
+	jal sinalcos
+	
+	l.s $f14, 0($sp)  #guarda o valor que tava na stack
+	addi $sp, $sp, 4  #deixa a stack arrumadinha pro proximo
+	
+	
+	mul.s $f0, $f0, $f16 # $f0 = cos * sinalcos(angulo)
 	mov.s $f30, $f0 #$f30 = cos
 	
 	# matriz[0][0] = cos
 	
+	l.s $f20, zeroFloat #$f20 = 0.0
+	l.s  $f22, oneNegFloat #$f22 = -1.0
 	add.s $f0, $f20, $f30
 	
 	la $s1, mat
@@ -67,6 +164,8 @@ criaMatriz:	# entrada: angulo em rad: $f14
 	
 	# matriz[1][1] = cos
 	
+	l.s $f20, zeroFloat #$f20 = 0.0
+	l.s  $f22, oneNegFloat #$f22 = -1.0
 	add.s $f0, $f20, $f30
 	
 	la $s1, mat
@@ -80,7 +179,9 @@ criaMatriz:	# entrada: angulo em rad: $f14
 	
 	
 	# matriz[0][1] = -sen
-
+	
+	l.s $f20, zeroFloat #$f20 = 0.0
+	l.s  $f22, oneNegFloat #$f22 = -1.0
 	mul.s $f0, $f28, $f22 #$f0 = -sen
 	
 	la $s1, mat
@@ -95,13 +196,15 @@ criaMatriz:	# entrada: angulo em rad: $f14
 	
 	# matriz[1][0] = sen
 	
+	l.s $f20, zeroFloat #$f20 = 0.0
+	l.s  $f22, oneNegFloat #$f22 = -1.0
 	add.s $f0, $f20, $f28
 	
 	la $s1, mat
 	li $t1, 1 # i eh o indice da linha que queremos acessar
 	sll $t1, $t1, 1 # i * nCols(2)
 	addi $t1, $t1, 0 # j eh o indice da coluna que queremos acessar
-	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um int (4)
+	sll $t1, $t1, 2 # offset = indice do vetor * tamanho de um float (4)
 	add $t1, $t1, $s1 # posicao da celula = offset + posicao da matriz
 	
 	swc1 $f0, ($t1)
@@ -265,17 +368,37 @@ fatorialDiv: 	# funcao que divide um float por um fatorial
 #Inicio da funcao cos
 cos:
 # funcao recebe o sen de um numero em $f12 e retorna em $f0
-# identidade trigonemetrica: Cos = sqrt(1 - SenÂ²)
+# identidade trigonemetrica: Cos = sqrt(1 - Sen²)
 	subi $sp, $sp, 4
 	sw $ra, 0($sp)  # salva o return address para chamar pow
 	li $a0, 2 #coloca 2 em a0 para chamar a funcao pow
-	mov.s $f0, $f12 # coloca o sen em $f0 para chamar a funcao pow
-	jal pow # fez senÂ² e colou em $f0
+	jal pow # fez sen² e colocou em $f0
 	lwc1 $f4, oneFloat
-	sub.s $f6, $f4, $f0 #Coloca em $f6 1 - SenÂ²
-	sqrt.s $f0, $f6 # Coloca em $f0 sqrt(1 - SenÂ²)]
+	sub.s $f6, $f4, $f0 #Coloca em $f6 1 - Sen²
+	sqrt.s $f8, $f6 # Coloca em $f0 sqrt(1 - Sen²)]
+	mov.s $f0, $f8
 	lw $ra, 0($sp)  #guarda o valor que tava na stack
 	addi $sp, $sp, 4  #deixa a stack arrumadinha pro proximo
 	jr $ra  # volta para a funcao
 	# fim da funcao
+
+#SinalCos - recebe o angulo em radianos e devolve o sinal do cos
+sinalcos:  #recebe o angulo em rad em $f12
+	mov.s $f4, $f12 # coloca o angulo em $f4 
+	lwc1 $f6, twoQuad # coloca o valor que marca a entrada para o segundo quadrante
+	lwc1 $f10, fourQuad # coloca o valor que marca a entrada para o quadrante quadrante
+	c.lt.s $f10, $f4 # vai retornar falso na flag se o angulo for maior ou igual a marca do terceiro quadrante, ou seja, se o angulo esta no quarto
+	bc1t sinalcospos
+	c.le.s $f4, $f6 # checa se o angulo eh menor ou igual a marca que indica entrada para o segundo quadrante, ou seja, se o angulo esta no primeiro quad
+	bc1t sinalcospos
+	#agora, se o angulo nao esta no primeiro nem quarto quadrante, ele esta no segundo ou no terceiro, que possuem sinal negativo
+	j sinalcosneg
+
+sinalcospos:  # caso em que o sinal do quadrante for positivo
+	lwc1 $f0, oneFloat
+	jr $ra
+
+sinalcosneg:
+	lwc1 $f0, oneNegFloat
+	jr $ra
 	
